@@ -4,7 +4,7 @@
 		<meta charset="UTF-8">
 		<meta name="viewport" content="width=device-width, initial-scale=1">
 		<title>ontv4 by hijoem</title>
-		<meta name="description" content="Watch your favourite TV! From hijoem.github.io">
+		<meta name="description" content="ontv4 - Watch your favourite TV! From hijoem.github.io">
 		<meta name="theme-color" content="#3f3f44" />
 		<link href="video-js.css" rel="stylesheet" />
 		<base href="https://ontv4.netlify.app/" target="_blank">
@@ -157,7 +157,7 @@
 		<header>
 			<div id="title"><a href="/">ontv4</a>  by  <a href="https://hijoem.github.io">hijoem</a></div>
 			<div><input id='search' type="text" placeholder='Search country/category' autocomplete="off"/></div>
-			<div id="nameDiv">Now watching: <strong>1 Music Channel</strong></div>
+			<div id="nameDiv">Now watching: <strong>BeritaSatu.id</strong></div>
 			<div id="playerDiv">
 				<video id="player"
 					class="video-js"
@@ -169,7 +169,7 @@
 					poster="android-chrome-512x512.png"
 					data-setup="{}"
 					>
-					<source src="https://edge126.rcs-rds.ro/utvedge/musicchannelhq.stream/playlist.m3u8" type="application/x-mpegURL" />
+					<source src="https://b1news.beritasatumedia.com/Beritasatu/B1News_manifest.m3u8" type="application/x-mpegURL" />
 					<p class="vjs-no-js">To view this video please enable JavaScript, and consider upgrading to a web browser that <a href="https://videojs.com/html5-video-support/" target="_blank">supports HTML5 video</a></p>
 				</video>
 			</div>
@@ -194,22 +194,35 @@
 	player.landscapeFullscreen();
 	let all = [];
 	let response = [];
+	let searchResult = [];
 	let music = [];
 	let indo = [];
 	let kids = [];
 	let sport = [];
+	let adult = [];
+	let firstplay = true;
+	function sleep(ms) {
+	  return new Promise(resolve => setTimeout(resolve, ms));
+	}
 	async function getResponse() {
 		if (localStorage.getItem("response")) {
 			all = JSON.parse(localStorage.getItem("response"));
 			renderHome();
 		} else {
-			let fetchs = await fetch("https://iptv-org.github.io/iptv/channels.json");
+			let fetchs = await fetch("https://iptv-org.github.io/api/streams.json");
 			if (fetchs.ok) {
 				all = await fetchs.json();
 				localStorage.setItem("response", JSON.stringify(all));
 				renderHome();
 			} else {
-				alert("HTTP-Error: " + fetchs.status);
+				let fetch = await fetch("streams.json");
+				if (fetch.ok) {
+					all = await fetch.json();
+					localStorage.setItem("response", JSON.stringify(all));
+					renderHome();
+				} else {
+					alert("HTTP-Error: " + fetch.status);
+				}
 			}
 		}
 	}
@@ -235,7 +248,9 @@
 			renderPlayer(tv.url);
 		} else if(value) {
 			document.getElementById("search").value = value;
-			renderList(search(value));
+			sleep(2000).then(() => { 
+				renderList(search(value));
+			});
 		}
 	}
 	async function renderHome(){
@@ -244,15 +259,19 @@
 		indo = [];
 		kids = [];
 		sport = [];
+		adult = [];
 		all.forEach(tv => {
-			if (tv.category === "Music") {
+			const t = (tv.channel ?? tv.url ?? '').toLowerCase();
+			if (t.indexOf('music') > -1) {
 				music.push(tv);
-			} else if (tv.category === "Sport") {
+			} else if (t.indexOf('sport') > -1) {
 				sport.push(tv);
-			} else if (tv.category === "Kids") {
+			} else if (t.indexOf('kid') > -1) {
 				kids.push(tv);
-			} else if (tv.country.code === "id") {
+			} else if (t.indexOf('.id') > -1 || t.indexOf('indo') > -1) {
 				indo.push(tv);
+			} else if (t.indexOf('adult') > -1 || t.indexOf('nsfw') > -1) {
+				adult.push(tv);
 			}
 		});
 		renderList(music);
@@ -272,18 +291,22 @@
 			let b = document.createElement("DIV");
 			b.setAttribute("id", "tv-list" + ind);
 			b.setAttribute("class", "tv-items");
-			b.innerHTML += `<p>${ind}. <strong>${tv.name}</strong><br>${tv.country.name} - ${tv.category}</p>`;
+			b.innerHTML += `<p>${ind}. <strong>${tv.channel ?? tv.url}</strong><br>${tv.status}</p>`;
 			b.innerHTML += "<input type='hidden' value='" + tv.url + "'>";
 			b.addEventListener("click", function(e) {
-			document.getElementById("nameDiv").innerHTML = `Now watching: <strong>${tv.name}</strong>`;
+			document.getElementById("nameDiv").innerHTML = `Now watching: <strong>${tv.channel}</strong>`;
 			renderPlayer(this.getElementsByTagName("input")[0].value);
 			});
 			ind++;
 			i.appendChild(b);
 		});
 		// autoplay after search
-		renderPlayer(tvs[0].url);
-		document.getElementById("nameDiv").innerHTML = `Now watching: <strong>${tvs[0].name}</strong>`;
+		if(!firstplay){
+			renderPlayer(tvs[0].url);
+			document.getElementById("nameDiv").innerHTML = `Now watching: <strong>${tvs[0].channel}</strong>`;
+		} else {
+			firstplay = false;
+		}
 	} else {
 		document.getElementById("infoDiv").innerHTML = `No channel found. Try type another keyword!`;
 	}
@@ -292,15 +315,9 @@
 		let result = [];
 		const q = query.toLowerCase();
 		all.forEach(tv => {
-			if (tv.name.toLowerCase().indexOf(q) > -1) {
+			if ((tv.channel ?? tv.url).toLowerCase().indexOf(q) > -1) {
 				result.push(tv);
-			} else if (tv.category) {
-				if(tv.category.toLowerCase().indexOf(q) > -1){
-				result.push(tv);}
-			} else if (tv.country.name) {
-				if(tv.country.name.toLowerCase().indexOf(q) > -1){
-				result.push(tv);}
-			}
+			} 
 		});
 		//renderlist(result);
 		return result;
